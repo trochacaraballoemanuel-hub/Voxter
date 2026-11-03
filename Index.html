@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030712">
+  <title>VORTEX SOUND // Cyberpunk Offline PWA Engine</title>
+  
+  <!-- Manifest inyectado para soporte PWA -->
+  <link rel="manifest" id="pwa-manifest">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Orbitron, Rajdhani & Share Tech Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              black: '#030712',
+              card: 'rgba(10, 14, 29, 0.55)',
+              cyan: '#00f3ff',
+              pink: '#ff0055',
+              purple: '#b026ff',
+              yellow: '#ffe600',
+              glass: 'rgba(6, 182, 212, 0.05)'
+            }
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif'],
+            mono: ['Share Tech Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #030712;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .bg-cyber-fixed {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: -30;
+      transition: background-image 0.5s ease-in-out, filter 0.3s;
+    }
+    .bg-overlay-glow {
+      position: fixed;
+      inset: 0;
+      z-index: -20;
+      background: radial-gradient(circle at 50% 30%, rgba(0, 243, 255, 0.12) 0%, rgba(176, 38, 255, 0.08) 50%, rgba(3, 7, 18, 0.75) 100%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .cyber-glass {
+      background: rgba(10, 16, 32, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 243, 255, 0.25);
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.15), inset 0 0 15px rgba(176, 38, 255, 0.1);
+    }
+    .cyber-card {
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s ease-in-out;
+    }
+    .cyber-card:hover, .cyber-card.active {
+      border-color: #00f3ff;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+      background: rgba(0, 243, 255, 0.1);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.6), 0 0 40px rgba(0, 243, 255, 0.2);
+    }
+    .text-glow-cyan {
+      text-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 20px rgba(0, 243, 255, 0.4);
+    }
+    .text-glow-pink {
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.8), 0 0 20px rgba(255, 0, 85, 0.4);
+    }
+    @keyframes spinCyber {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .spin-disc {
+      animation: spinCyber 10s linear infinite;
+    }
+    .paused-disc {
+      animation-play-state: paused;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      border: 1px solid rgba(0, 243, 255, 0.3);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 2px;
+      background: #00f3ff;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -6px;
+      box-shadow: 0 0 12px #00f3ff, 0 0 20px #00f3ff;
+      transform: rotate(45deg);
+    }
+    .vertical-slider {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 12px;
+      height: 130px;
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(3, 7, 18, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00f3ff;
+      border-radius: 2px;
+      box-shadow: 0 0 10px #00f3ff;
+    }
+    .swipe-container {
+      display: flex;
+      width: 200%;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .swipe-page {
+      width: 50%;
+      flex-shrink: 0;
+    }
+    .clip-cyber {
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-rajdhani min-h-screen flex flex-col overflow-x-hidden select-none">
+  <!-- Fondo Fijo Personalizado -->
+  <div id="cyber-bg" class="bg-cyber-fixed" style="background-image: url('https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=1600&q=80');"></div>
+  <div id="bg-overlay" class="bg-overlay-glow"></div>
+  
+  <!-- Contenedor Principal Cyberpunk -->
+  <div class="flex-1 flex flex-col max-w-5xl w-full mx-auto p-2 sm:p-4 md:p-6 z-10 relative">
+    
+    <!-- Header / Barra Superior Neón -->
+    <header class="cyber-glass clip-cyber p-3 sm:p-4 mb-3 sm:mb-4 flex flex-wrap items-center justify-between gap-2 sm:gap-4 border-b-2 border-cyber-cyan">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-none bg-cyber-cyan/20 border border-cyber-cyan flex items-center justify-center text-cyber-cyan text-xl glow-cyan clip-cyber">
+          <i class="fa-solid fa-atom animate-spin" style="animation-duration: 8s;"></i>
+        </div>
+        <div>
+          <h1 class="font-orbitron font-black text-lg sm:text-2xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan via-cyber-purple to-cyber-pink text-glow-cyan">
+            VORTEX SOUND
+          </h1>
+          <p class="text-[10px] sm:text-xs text-cyber-cyan/80 font-mono tracking-wider flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="pwa-status-tag">PWA & LOCKSCREEN ACTIVE</span>
+          </p>
+        </div>
+      </div>
+      
+      <!-- Navegación por Tabs & Deslizamiento -->
+      <nav class="flex items-center gap-1 sm:gap-2 bg-slate-950/70 p-1 border border-cyber-cyan/30 rounded-none clip-cyber text-xs font-mono">
+        <button onclick="compartirCancionActual()" id="nav-btn-share" class="px-2.5 py-1.5 text-cyber-cyan hover:text-white transition flex items-center gap-1 border border-cyber-cyan/40" title="Compartir Reproductor / Canción">
+          <i class="fa-solid fa-share-nodes"></i>
+          <span class="hidden sm:inline">COMPARTIR</span>
+        </button>
+        <button onclick="requestNotificationPermission()" id="nav-btn-notif" class="px-2.5 py-1.5 text-cyber-yellow hover:text-white transition flex items-center gap-1 border border-cyber-yellow/40">
+          <i class="fa-solid fa-bell"></i>
+          <span class="hidden sm:inline">NOTIFICAR</span>
+        </button>
+        <button onclick="swipeToPage(0)" id="nav-btn-deck" class="px-3 py-1.5 transition-all text-cyber-cyan bg-cyber-cyan/20 border border-cyber-cyan font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-compact-disc"></i>
+          <span>DISCO</span>
+        </button>
+        <button onclick="swipeToPage(1)" id="nav-btn-list" class="px-3 py-1.5 transition-all text-slate-400 hover:text-cyber-cyan flex items-center gap-1.5">
+          <i class="fa-solid fa-list-ul"></i>
+          <span>LISTA (<span id="playlist-count">0</span>)</span>
+        </button>
+        <button onclick="openModal('modal-eq')" class="px-2.5 py-1.5 text-slate-400 hover:text-cyber-pink transition flex items-center gap-1">
+          <i class="fa-solid fa-sliders text-cyber-pink"></i>
+          <span class="hidden sm:inline">EQ</span>
+        </button>
+        <button onclick="openModal('modal-settings')" class="px-2.5 py-1.5 text-slate-400 hover:text-cyber-purple transition flex items-center gap-1">
+          <i class="fa-solid fa-image text-cyber-purple"></i>
+          <span class="hidden sm:inline">FONDO</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Indicador de Deslizamiento Swipe -->
+    <div class="flex justify-between items-center px-2 mb-2 text-[11px] font-mono text-cyber-cyan/60 sm:hidden">
+      <span onclick="swipeToPage(0)" class="cursor-pointer hover:text-cyber-cyan"><i class="fa-solid fa-arrow-left"></i> DESLIZA DISCO</span>
+      <div class="flex gap-1.5">
+        <span id="dot-0" class="w-2.5 h-1 bg-cyber-cyan rounded-full"></span>
+        <span id="dot-1" class="w-2.5 h-1 bg-slate-700 rounded-full"></span>
+      </div>
+      <span onclick="swipeToPage(1)" class="cursor-pointer hover:text-cyber-cyan">LISTA <i class="fa-solid fa-arrow-right"></i></span>
+    </div>
+
+    <!-- AREA DESLIZABLE (SWIPE CONTAINER) -->
+    <div class="flex-1 relative overflow-hidden clip-cyber border border-cyber-cyan/20">
+      <div id="swipe-wrapper" class="swipe-container h-full">
+        
+        <!-- PAGE 1: DISCO VIRTUAL HOLO-DECK -->
+        <div class="swipe-page p-3 sm:p-6 flex flex-col justify-between items-center min-h-[480px]">
+          <div class="relative w-full flex-1 flex flex-col items-center justify-center my-2">
+            <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-40 pointer-events-none rounded-none"></canvas>
+            
+            <div id="disc-container" class="relative group cursor-pointer my-4" onclick="togglePlay()">
+              <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-cyber-cyan via-cyber-purple to-cyber-pink opacity-50 blur-lg group-hover:opacity-100 transition duration-500"></div>
+              
+              <div id="vinyl-disc" class="relative w-52 h-52 sm:w-72 sm:h-72 md:w-80 md:h-80 rounded-full bg-slate-950 border-4 border-cyber-cyan/60 shadow-2xl flex items-center justify-center spin-disc paused-disc">
+                <div class="absolute inset-3 rounded-full border border-cyber-cyan/20"></div>
+                <div class="absolute inset-8 rounded-full border border-cyber-purple/30"></div>
+                <div class="absolute inset-14 rounded-full border border-cyber-pink/20"></div>
+                
+                <div id="album-art" class="w-24 h-24 sm:w-36 sm:h-36 rounded-full bg-slate-900 bg-cover bg-center border-2 border-cyber-cyan flex items-center justify-center overflow-hidden shadow-inner relative" style="background-image: url('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&q=80');">
+                  <div class="absolute inset-0 bg-cyber-black/30"></div>
+                  <i id="album-art-fallback" class="fa-solid fa-compact-disc text-4xl text-cyber-cyan hidden animate-spin" style="animation-duration: 4s;"></i>
+                </div>
+                <div class="w-5 h-5 rounded-full bg-cyber-black border-2 border-cyber-cyan absolute"></div>
+              </div>
+            </div>
+
+            <div class="w-full text-center z-10 mt-2 space-y-1 px-4">
+              <h2 id="track-title" class="font-orbitron font-bold text-lg sm:text-2xl text-white truncate text-glow-cyan">
+                SIN CANCIONES EN MEMORIA
+              </h2>
+              <p id="track-artist" class="text-xs sm:text-sm text-cyber-cyan/80 font-mono truncate">
+                Importa tus MP3 para activar control en pantalla de bloqueo
+              </p>
+            </div>
+          </div>
+
+          <div class="w-full max-w-xl space-y-1 font-mono text-xs z-10 px-2 mt-2">
+            <input type="range" id="seek-bar" min="0" max="100" value="0" class="w-full">
+            <div class="flex justify-between text-cyber-cyan/70 text-[11px]">
+              <span id="current-time">00:00</span>
+              <span id="duration-time">00:00</span>
+            </div>
+          </div>
+
+          <div class="w-full max-w-md flex items-center justify-center gap-4 sm:gap-6 my-3 z-10">
+            <button onclick="toggleShuffle()" id="btn-shuffle" title="Aleatorio" class="text-slate-500 hover:text-cyber-cyan transition text-lg">
+              <i class="fa-solid fa-shuffle"></i>
+            </button>
+            <button onclick="playPrev()" title="Anterior" class="w-10 h-10 border border-cyber-cyan/50 bg-slate-900/80 hover:bg-cyber-cyan/20 text-cyber-cyan flex items-center justify-center transition clip-cyber">
+              <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button onclick="togglePlay()" id="btn-play" title="Play/Pausa" class="w-14 h-14 bg-gradient-to-r from-cyber-cyan via-cyber-purple to-cyber-pink hover:opacity-90 text-slate-950 flex items-center justify-center text-2xl font-bold transition transform active:scale-95 glow-cyan clip-cyber">
+              <i class="fa-solid fa-play ml-1"></i>
+            </button>
+            <button onclick="playNext()" title="Siguiente" class="w-10 h-10 border border-cyber-cyan/50 bg-slate-900/80 hover:bg-cyber-cyan/20 text-cyber-cyan flex items-center justify-center transition clip-cyber">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
+            <button onclick="toggleRepeat()" id="btn-repeat" title="Repetir" class="text-slate-500 hover:text-cyber-cyan transition text-lg">
+              <i class="fa-solid fa-repeat"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- PAGE 2: LISTA DE CANCIONES -->
+        <div class="swipe-page p-3 sm:p-6 flex flex-col h-full justify-between">
+          <div class="flex flex-wrap items-center justify-between pb-3 border-b border-cyber-cyan/30 gap-2">
+            <div>
+              <h3 class="font-orbitron font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-database text-cyber-cyan"></i> BIBLIOTECA INDEXEDDB
+              </h3>
+              <p class="text-[11px] font-mono text-slate-400">Archivos persistentes listos para control nativo</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <label for="folder-input" class="cursor-pointer px-2.5 sm:px-3 py-2 bg-cyber-purple text-slate-950 font-orbitron font-bold text-xs clip-cyber flex items-center gap-1.5 hover:opacity-90 transition">
+                <i class="fa-solid fa-folder-plus"></i>
+                <span>CARPETA</span>
+              </label>
+              <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
+              
+              <label for="file-input" class="cursor-pointer px-3 sm:px-4 py-2 bg-gradient-to-r from-cyber-cyan to-cyber-purple text-slate-950 font-orbitron font-bold text-xs clip-cyber flex items-center gap-2 hover:opacity-90 transition glow-cyan">
+                <i class="fa-solid fa-file-circle-plus"></i>
+                <span>MP3</span>
+              </label>
+              <input type="file" id="file-input" accept="audio/*" multiple class="hidden">
+            </div>
+          </div>
+
+          <div id="playlist-container" class="flex-1 overflow-y-auto my-3 space-y-2 pr-1 min-h-[300px] max-h-[420px]">
+            <div id="empty-playlist" class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 font-mono">
+              <i class="fa-solid fa-folder-open text-5xl mb-3 text-cyber-cyan/40 animate-bounce"></i>
+              <p class="text-sm text-slate-300 font-bold">LA BIBLIOTECA ESTÁ VACÍA</p>
+              <p class="text-xs text-slate-400 max-w-xs mt-1">Sube tus archivos MP3 o carpetas para gestionar tu música.</p>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-cyber-cyan/30 flex flex-wrap items-center justify-between text-xs font-mono text-slate-400 gap-2">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-gauge-high text-cyber-cyan"></i>
+              <span>VELOCIDAD:</span>
+              <select id="speed-select" onchange="changePlaybackSpeed(this.value)" class="bg-slate-950 border border-cyber-cyan/40 text-cyber-cyan px-2 py-1 text-xs clip-cyber focus:outline-none">
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1.0" selected>1.0x (NORMAL)</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2.0">2.0x</option>
+              </select>
+            </div>
+            <button onclick="clearPlaylistDB()" class="text-cyber-pink hover:text-rose-400 transition text-xs flex items-center gap-1 font-mono">
+              <i class="fa-solid fa-trash-can"></i> VACIAR TODO
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Indicador Neón Sleep Timer Footer -->
+    <div id="sleep-timer-badge" class="hidden mt-2 p-2 bg-cyber-pink/20 border border-cyber-pink text-cyber-pink font-mono text-xs text-center clip-cyber flex items-center justify-center gap-2">
+      <i class="fa-solid fa-clock animate-pulse"></i>
+      <span>TEMPORIZADOR ACTIVO: <span id="timer-countdown" class="font-bold">--:--</span></span>
+      <button onclick="cancelSleepTimer()" class="ml-2 underline text-white">CANCELAR</button>
+    </div>
+  </div>
+
+  <!-- MODAL 1: EQUALIZER & SOUND BOOSTER -->
+  <div id="modal-eq" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="cyber-glass clip-cyber max-w-lg w-full p-6 border-2 border-cyber-pink space-y-5 relative">
+      <button onclick="closeModal('modal-eq')" class="absolute top-4 right-4 text-cyber-pink hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="text-center">
+        <h3 class="font-orbitron font-bold text-xl text-cyber-pink text-glow-pink flex items-center justify-center gap-2">
+          <i class="fa-solid fa-bolt"></i> SUPER SOUND BOOSTER 200%
+        </h3>
+        <p class="text-xs font-mono text-slate-300 mt-1">Amplificación de audio y ecualizador de 5 bandas HD</p>
+      </div>
+      
+      <div class="cyber-card p-4 rounded-none border border-cyber-pink/40 space-y-2">
+        <div class="flex justify-between items-center text-xs font-mono">
+          <span class="text-slate-300">AMPLIFICADOR MASTER:</span>
+          <span id="booster-val" class="font-orbitron text-cyber-pink font-bold text-base">100%</span>
+        </div>
+        <input type="range" id="booster-slider" min="0" max="200" value="100" class="w-full">
+        <div class="flex justify-between text-[10px] font-mono text-slate-400">
+          <span>0%</span>
+          <span>100% (Normal)</span>
+          <span class="text-cyber-pink font-bold">200% (BOOST)</span>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex justify-between items-center text-xs font-mono">
+          <span class="text-cyber-cyan font-bold">PRESETS DE ECUALIZACIÓN:</span>
+          <div class="flex gap-1">
+            <button onclick="setEqPreset('flat')" class="px-2 py-0.5 text-[10px] bg-slate-900 border border-slate-700 hover:border-cyber-cyan text-slate-300">FLAT</button>
+            <button onclick="setEqPreset('bass')" class="px-2 py-0.5 text-[10px] bg-slate-900 border border-slate-700 hover:border-cyber-cyan text-slate-300">BASS</button>
+            <button onclick="setEqPreset('rock')" class="px-2 py-0.5 text-[10px] bg-slate-900 border border-slate-700 hover:border-cyber-cyan text-slate-300">ROCK</button>
+            <button onclick="setEqPreset('pop')" class="px-2 py-0.5 text-[10px] bg-slate-900 border border-slate-700 hover:border-cyber-cyan text-slate-300">POP</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-5 gap-2 bg-slate-950/80 p-4 border border-cyber-cyan/30 text-center font-mono">
+          <div class="flex flex-col items-center gap-1">
+            <span id="eq-val-0" class="text-[10px] text-cyber-cyan">+0dB</span>
+            <input type="range" min="-12" max="12" value="0" class="vertical-slider eq-band" data-band="0">
+            <span class="text-[11px] text-slate-300">60Hz</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span id="eq-val-1" class="text-[10px] text-cyber-cyan">+0dB</span>
+            <input type="range" min="-12" max="12" value="0" class="vertical-slider eq-band" data-band="1">
+            <span class="text-[11px] text-slate-300">230Hz</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span id="eq-val-2" class="text-[10px] text-cyber-cyan">+0dB</span>
+            <input type="range" min="-12" max="12" value="0" class="vertical-slider eq-band" data-band="2">
+            <span class="text-[11px] text-slate-300">910Hz</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span id="eq-val-3" class="text-[10px] text-cyber-cyan">+0dB</span>
+            <input type="range" min="-12" max="12" value="0" class="vertical-slider eq-band" data-band="3">
+            <span class="text-[11px] text-slate-300">4kHz</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span id="eq-val-4" class="text-[10px] text-cyber-cyan">+0dB</span>
+            <input type="range" min="-12" max="12" value="0" class="vertical-slider eq-band" data-band="4">
+            <span class="text-[11px] text-slate-300">14kHz</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: CONFIGURACIÓN Y FONDO GALERÍA -->
+  <div id="modal-settings" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="cyber-glass clip-cyber max-w-lg w-full p-6 border-2 border-cyber-purple space-y-5 relative">
+      <button onclick="closeModal('modal-settings')" class="absolute top-4 right-4 text-cyber-purple hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="text-center">
+        <h3 class="font-orbitron font-bold text-xl text-cyber-purple text-glow-cyan flex items-center justify-center gap-2">
+          <i class="fa-solid fa-image"></i> CONFIGURAR FONDO DE GALERÍA
+        </h3>
+        <p class="text-xs font-mono text-slate-300 mt-1">Sube cualquier foto de tu dispositivo. Se guardará en IndexedDB.</p>
+      </div>
+
+      <div class="cyber-card p-4 rounded-none border border-cyber-purple/40 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+          <label for="bg-file-input" class="w-full sm:w-auto px-4 py-2 bg-cyber-purple text-slate-950 font-orbitron font-bold text-xs clip-cyber cursor-pointer hover:opacity-90 transition text-center flex items-center justify-center gap-2">
+            <i class="fa-solid fa-upload"></i> SELECCIONAR FOTO
+          </label>
+          <input type="file" id="bg-file-input" accept="image/*" class="hidden">
+          <button onclick="resetDefaultBg()" class="w-full sm:w-auto px-3 py-2 bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono hover:border-cyber-purple transition">
+            RESTAURAR DEFECTO
+          </button>
+        </div>
+        <div class="space-y-2 pt-2 border-t border-slate-800 font-mono text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">DESENFOQUE (BLUR):</label>
+            <input type="range" id="bg-blur-slider" min="0" max="20" value="8" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <div class="cyber-card p-4 rounded-none border border-cyber-cyan/40 space-y-3">
+        <h4 class="font-orbitron text-xs font-bold text-cyber-cyan flex items-center gap-2">
+          <i class="fa-solid fa-bed"></i> TEMPORIZADOR DE APAGADO (SLEEP TIMER)
+        </h4>
+        <div class="grid grid-cols-4 gap-2 font-mono text-xs">
+          <button onclick="setSleepTimer(15)" class="py-2 bg-slate-900 border border-cyber-cyan/30 hover:border-cyber-cyan text-slate-200">15 MIN</button>
+          <button onclick="setSleepTimer(30)" class="py-2 bg-slate-900 border border-cyber-cyan/30 hover:border-cyber-cyan text-slate-200">30 MIN</button>
+          <button onclick="setSleepTimer(60)" class="py-2 bg-slate-900 border border-cyber-cyan/30 hover:border-cyber-cyan text-slate-200">60 MIN</button>
+          <button onclick="cancelSleepTimer()" class="py-2 bg-cyber-pink/20 border border-cyber-pink text-cyber-pink font-bold">DESACTIVAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Neón -->
+  <div id="toast-msg" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-950/90 text-cyber-cyan border-2 border-cyber-cyan px-5 py-2.5 font-mono text-xs shadow-2xl backdrop-blur-md transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2 clip-cyber glow-cyan">
+    <i class="fa-solid fa-terminal text-cyber-pink"></i>
+    <span id="toast-text">NOTIFICACIÓN</span>
+  </div>
+
+  <!-- Audio Element Oculto -->
+  <audio id="audio-element" preload="metadata" crossorigin="anonymous"></audio>
+
+  <!-- SCRIPT PRINCIPAL INTEGRADO -->
+  <script>
+    /* ================= PWA Y SERVICE WORKER ================= */
+    function initPWAAndServiceWorker() {
+      const manifest = {
+        name: "Vortex Sound Cyberpunk",
+        short_name: "VortexSound",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#030712",
+        theme_color: "#030712",
+        icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3083/3083410.png", sizes: "512x512", type: "image/png" }]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+      
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          const CACHE_NAME = 'vortex-sound-cache-v2';
+          const ASSETS = ['./', 'https://cdn.tailwindcss.com', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css', 'https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap'];
+          self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())); });
+          self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+          self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(res => res || fetch(e.request))); });
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.warn('SW Omitido:', err));
+      }
+    }
+    initPWAAndServiceWorker();
+
+    /* ================= INDEXEDDB CONFIGURACIÓN ================= */
+    const DB_NAME = 'VortexSoundDB';
+    const DB_VERSION = 1;
+    let db = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const dbInstance = e.target.result;
+          if (!dbInstance.objectStoreNames.contains('songs')) dbInstance.createObjectStore('songs', { keyPath: 'id' });
+          if (!dbInstance.objectStoreNames.contains('settings')) dbInstance.createObjectStore('settings', { keyPath: 'key' });
+        };
+        request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    function saveSongToDB(songObj) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('songs', 'readwrite');
+        tx.objectStore('songs').put(songObj);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    function getAllSongsFromDB() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('songs', 'readonly');
+        const req = tx.objectStore('songs').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    function deleteSongFromDB(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('songs', 'readwrite');
+        tx.objectStore('songs').delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    function clearAllSongsFromDB() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('songs', 'readwrite');
+        tx.objectStore('songs').clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    function saveSettingToDB(key, val) {
+      return new Promise((resolve) => {
+        const tx = db.transaction('settings', 'readwrite');
+        tx.objectStore('settings').put({ key, value: val });
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    function getSettingFromDB(key) {
+      return new Promise((resolve) => {
+        const tx = db.transaction('settings', 'readonly');
+        const req = tx.objectStore('settings').get(key);
+        req.onsuccess = () => resolve(req.result ? req.result.value : null);
+        req.onerror = () => resolve(null);
+      });
+    }
+
+    /* ================= ESTADO GLOBAL ================= */
+    let playlist = [];
+    let currentTrackIndex = -1;
+    let isPlaying = false;
+    let isShuffle = false;
+    let isRepeat = false;
+    let currentPage = 0;
+    let audioCtx = null, audioSource = null, gainNode = null, eqFilters = [], analyserNode = null;
+    let timerInterval = null, timerMinutesLeft = 0;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await initDB();
+        await loadStoredData();
+      } catch (err) {
+        showToast('ERROR AL CARGAR MEMORIA OFFLINE');
+      }
+      initDOMListeners();
+      initSwipeSupport();
+      initMediaSessionHandlers();
+    });
+
+    async function loadStoredData() {
+      const savedSongs = await getAllSongsFromDB();
+      if (savedSongs.length > 0) {
+        playlist = savedSongs;
+        renderPlaylist();
+        loadTrack(0, false);
+        showToast(`CARGADAS ${savedSongs.length} CANCIONES DE MEMORIA`);
+      }
+      const savedBg = await getSettingFromDB('custom_bg');
+      if (savedBg) document.getElementById('cyber-bg').style.backgroundImage = `url('${savedBg}')`;
+    }
+
+    function initDOMListeners() {
+      document.getElementById('file-input').addEventListener('change', handleAudioUpload);
+      document.getElementById('folder-input').addEventListener('change', handleAudioUpload);
+      document.getElementById('bg-file-input').addEventListener('change', handleBgUpload);
+      
+      const audio = document.getElementById('audio-element');
+      audio.addEventListener('timeupdate', updateProgress);
+      audio.addEventListener('ended', handleTrackEnded);
+      audio.addEventListener('play', () => setPlayState(true));
+      audio.addEventListener('pause', () => setPlayState(false));
+
+      document.getElementById('seek-bar').addEventListener('input', (e) => {
+        if (audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration;
+      });
+
+      document.getElementById('booster-slider').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('booster-val').innerText = val + '%';
+        if (gainNode) gainNode.gain.value = val / 100;
+      });
+
+      document.querySelectorAll('.eq-band').forEach((slider) => {
+        slider.addEventListener('input', (e) => {
+          const bandIdx = parseInt(e.target.dataset.band);
+          const val = parseFloat(e.target.value);
+          document.getElementById(`eq-val-${bandIdx}`).innerText = (val > 0 ? '+' : '') + val + 'dB';
+          if (eqFilters[bandIdx]) eqFilters[bandIdx].gain.value = val;
+        });
+      });
+
+      document.getElementById('bg-blur-slider').addEventListener('input', (e) => {
+        document.getElementById('bg-overlay').style.backdropFilter = `blur(${e.target.value}px)`;
+      });
+    }
+
+    async function handleAudioUpload(e) {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+      const audioFiles = files.filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(f.name));
+      if (!audioFiles.length) {
+        showToast('NO SE ENCONTRARON ARCHIVOS DE AUDIO VÁLIDOS');
+        return;
+      }
+      
+      showToast(`PROCESANDO ${audioFiles.length} ARCHIVOS...`);
+      let addedCount = 0;
+
+      for (let file of audioFiles) {
+        try {
+          const songObj = await guardarCancionOptimizada(file);
+          playlist.push(songObj);
+          addedCount++;
+        } catch (err) {
+          console.error('Error al procesar archivo:', err);
+        }
+      }
+
+      renderPlaylist();
+      showToast(`${addedCount} CANCIONES GUARDADAS EN INDEXEDDB`);
+      if (currentTrackIndex === -1 && playlist.length > 0) loadTrack(0, false);
+    }
+
+    function guardarCancionOptimizada(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const blob = new Blob([e.target.result], { type: file.type || 'audio/mp3' });
+          const songObj = {
+            id: 'song_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
+            artist: 'Vortex Offline Audio',
+            blob: blob,
+            size: file.size,
+            dateAdded: Date.now()
+          };
+          await saveSongToDB(songObj);
+          resolve(songObj);
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function renderPlaylist() {
+      const container = document.getElementById('playlist-container');
+      const countEl = document.getElementById('playlist-count');
+      const emptyState = document.getElementById('empty-playlist');
+      countEl.innerText = playlist.length;
+      
+      if (playlist.length === 0) {
+        container.innerHTML = '';
+        container.appendChild(emptyState);
+        return;
+      }
+      
+      container.innerHTML = '';
+      playlist.forEach((track, index) => {
+        const isCurrent = index === currentTrackIndex;
+        const item = document.createElement('div');
+        item.className = `cyber-card p-3 clip-cyber flex items-center justify-between cursor-pointer border ${isCurrent ? 'border-cyber-cyan bg-cyber-cyan/15 text-white glow-cyan' : 'border-slate-800 text-slate-300 hover:border-cyber-cyan/50'}`;
+        item.onclick = () => { loadTrack(index, true); swipeToPage(0); };
+        item.innerHTML = `
+          <div class="flex items-center gap-3 truncate pr-2">
+            <div class="w-8 h-8 ${isCurrent ? 'bg-cyber-cyan text-slate-950 font-bold' : 'bg-slate-900 text-cyber-cyan border border-cyber-cyan/30'} flex items-center justify-center font-mono text-xs shrink-0 clip-cyber">
+              ${isCurrent && isPlaying ? '<i class="fa-solid fa-volume-high animate-pulse"></i>' : index + 1}
+            </div>
+            <div class="truncate">
+              <p class="font-bold text-xs truncate ${isCurrent ? 'text-cyber-cyan' : 'text-slate-100'}">${track.title}</p>
+              <p class="text-[10px] font-mono text-slate-400 truncate">${track.artist}</p>
+            </div>
+          </div>
+          <button onclick="removeSong(event, ${index})" title="Eliminar" class="text-slate-500 hover:text-cyber-pink p-2 transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function removeSong(e, index) {
+      e.stopPropagation();
+      const song = playlist[index];
+      if (song && song.id) await deleteSongFromDB(song.id);
+      
+      playlist.splice(index, 1);
+      if (index === currentTrackIndex) {
+        document.getElementById('audio-element').pause();
+        currentTrackIndex = -1;
+        document.getElementById('track-title').innerText = 'SIN CANCIONES';
+        document.getElementById('track-artist').innerText = 'Importa tus MP3';
+      } else if (index < currentTrackIndex) {
+        currentTrackIndex--;
+      }
+      renderPlaylist();
+      showToast('CANCIÓN ELIMINADA');
+    }
+
+    async function clearPlaylistDB() {
+      if (!confirm('¿Deseas eliminar TODAS las canciones de IndexedDB?')) return;
+      await clearAllSongsFromDB();
+      playlist = [];
+      currentTrackIndex = -1;
+      document.getElementById('audio-element').pause();
+      document.getElementById('track-title').innerText = 'SIN CANCIONES';
+      document.getElementById('track-artist').innerText = 'Importa tus MP3';
+      renderPlaylist();
+      showToast('BIBLIOTECA VACIADA');
+    }
+
+    /* ================= REPRODUCTOR Y AUDIO CON MEDIA SESSION MEJORADO ================= */
+    function loadTrack(index, autoPlay = false) {
+      if (index < 0 || index >= playlist.length) return;
+      currentTrackIndex = index;
+      const track = playlist[index];
+      const audio = document.getElementById('audio-element');
+      
+      if (track.blob) audio.src = URL.createObjectURL(track.blob);
+      
+      document.getElementById('track-title').innerText = track.title;
+      document.getElementById('track-artist').innerText = track.artist;
+      renderPlaylist();
+      
+      // Actualizamos los metadatos para la pantalla de bloqueo y barra de estado de Android
+      updateMediaSession(track);
+      
+      if (autoPlay) {
+        initWebAudio();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        audio.play().catch(() => console.log('Autoplay bloqueado'));
+      }
+    }
+
+    function togglePlay() {
+      const audio = document.getElementById('audio-element');
+      if (playlist.length === 0) { showToast('AGREGA CANCIONES PRIMERO'); return; }
+      initWebAudio();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if (currentTrackIndex === -1) { loadTrack(0, true); return; }
+      if (isPlaying) audio.pause(); else audio.play();
+    }
+
+    function setPlayState(playing) {
+      isPlaying = playing;
+      const playBtn = document.getElementById('btn-play');
+      const vinyl = document.getElementById('vinyl-disc');
+      if (playing) {
+        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        vinyl.classList.remove('paused-disc');
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+      } else {
+        playBtn.innerHTML = '<i class="fa-solid fa-play ml-1"></i>';
+        vinyl.classList.add('paused-disc');
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+      }
+    }
+
+    function playNext() {
+      if (playlist.length === 0) return;
+      if (isShuffle) loadTrack(Math.floor(Math.random() * playlist.length), true);
+      else loadTrack((currentTrackIndex + 1) % playlist.length, true);
+    }
+
+    function playPrev() {
+      if (playlist.length === 0) return;
+      loadTrack((currentTrackIndex - 1 + playlist.length) % playlist.length, true);
+    }
+
+    function handleTrackEnded() {
+      if (isRepeat) {
+        const audio = document.getElementById('audio-element');
+        audio.currentTime = 0;
+        audio.play();
+      } else {
+        playNext();
+      }
+    }
+
+    function updateProgress() {
+      const audio = document.getElementById('audio-element');
+      if (audio.duration) {
+        document.getElementById('seek-bar').value = (audio.currentTime / audio.duration) * 100;
+        document.getElementById('current-time').innerText = formatTime(audio.currentTime);
+        document.getElementById('duration-time').innerText = formatTime(audio.duration);
+        
+        // Actualizar posición de reproducción en la MediaSession del sistema (Pantalla de bloqueo)
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: audio.duration || 0,
+              playbackRate: audio.playbackRate || 1,
+              position: audio.currentTime || 0
+            });
+          } catch (e) {}
+        }
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function toggleShuffle() {
+      isShuffle = !isShuffle;
+      document.getElementById('btn-shuffle').className = isShuffle ? 'text-cyber-cyan font-bold text-lg text-glow-cyan' : 'text-slate-500 hover:text-cyber-cyan transition text-lg';
+      showToast(isShuffle ? 'ALEATORIO ACTIVADO' : 'ALEATORIO DESACTIVADO');
+    }
+
+    function toggleRepeat() {
+      isRepeat = !isRepeat;
+      document.getElementById('btn-repeat').className = isRepeat ? 'text-cyber-cyan font-bold text-lg text-glow-cyan' : 'text-slate-500 hover:text-cyber-cyan transition text-lg';
+      showToast(isRepeat ? 'REPETIR ACTIVADO' : 'REPETIR DESACTIVADO');
+    }
+
+    function changePlaybackSpeed(spd) {
+      document.getElementById('audio-element').playbackRate = parseFloat(spd);
+      showToast(`VELOCIDAD: ${spd}x`);
+    }
+
+    function compartirCancionActual() {
+      if (playlist.length === 0 || currentTrackIndex === -1) {
+        showToast('NO HAY NINGUNA CANCIÓN SONANDO');
+        return;
+      }
+      const track = playlist[currentTrackIndex];
+      if (navigator.share) {
+        navigator.share({
+          title: 'Vortex Sound - PWA Player',
+          text: `Estoy escuchando "${track.title}" en Vortex Sound 🎧`,
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        showToast('ENLACE COPIADO AL PORTAPAPELES');
+      }
+    }
+
+    function requestNotificationPermission() {
+      if ('Notification' in window) {
+        Notification.requestPermission().then(permission => {
+          showToast(permission === 'granted' ? 'NOTIFICACIONES ACTIVADAS' : 'PERMISO DENEGADO');
+        });
+      }
+    }
+
+    /* ================= INTEGRACIÓN DE PANTALLA DE BLOQUEO Y BARRA DE ESTADO (MEDIA SESSION) ================= */
+    function initMediaSessionHandlers() {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => {
+          const audio = document.getElementById('audio-element');
+          audio.play();
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          const audio = document.getElementById('audio-element');
+          audio.pause();
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+        
+        // Soporte para mandos multimedia (auriculares bluetooth / controles de pantalla de bloqueo)
+        try {
+          navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+            const audio = document.getElementById('audio-element');
+            audio.currentTime = Math.max(audio.currentTime - (details.seekOffset || 10), 0);
+          });
+          navigator.mediaSession.setActionHandler('seekforward', (details) => {
+            const audio = document.getElementById('audio-element');
+            audio.currentTime = Math.min(audio.currentTime + (details.seekOffset || 10), audio.duration);
+          });
+          navigator.mediaSession.setActionHandler('seekto', (details) => {
+            const audio = document.getElementById('audio-element');
+            if (details.fastSeek && 'fastSeek' in audio) {
+              audio.fastSeek(details.seekTime);
+              return;
+            }
+            audio.currentTime = details.seekTime;
+          });
+        } catch(e) {}
+      }
+    }
+
+    function updateMediaSession(track) {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title || 'Canción Desconocida',
+          artist: track.artist || 'Vortex Sound',
+          album: 'Vortex Cyberpunk Library',
+          artwork: [
+            { src: 'https://cdn-icons-png.flaticon.com/512/3083/3083410.png', sizes: '96x96', type: 'image/png' },
+            { src: 'https://cdn-icons-png.flaticon.com/512/3083/3083410.png', sizes: '128x128', type: 'image/png' },
+            { src: 'https://cdn-icons-png.flaticon.com/512/3083/3083410.png', sizes: '192x192', type: 'image/png' },
+            { src: 'https://cdn-icons-png.flaticon.com/512/3083/3083410.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
+      }
+    }
+
+    /* ================= WEB AUDIO API & VISUALIZER ================= */
+    function initWebAudio() {
+      if (audioCtx) return;
+      const audio = document.getElementById('audio-element');
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioSource = audioCtx.createMediaElementSource(audio);
+      gainNode = audioCtx.createGain();
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 64;
+      
+      const freqs = [60, 230, 910, 4000, 14000];
+      eqFilters = freqs.map((f, idx) => {
+        const filter = audioCtx.createBiquadFilter();
+        if (idx === 0) filter.type = 'lowshelf';
+        else if (idx === freqs.length - 1) filter.type = 'highshelf';
+        else filter.type = 'peaking';
+        filter.frequency.value = f;
+        filter.gain.value = 0;
+        return filter;
+      });
+
+      let current = audioSource;
+      eqFilters.forEach(f => { current.connect(f); current = f; });
+      current.connect(gainNode);
+      gainNode.connect(analyserNode);
+      analyserNode.connect(audioCtx.destination);
+      gainNode.gain.value = parseInt(document.getElementById('booster-slider').value) / 100;
+      startVisualizer();
+    }
+
+    function startVisualizer() {
+      const canvas = document.getElementById('visualizer');
+      const ctx = canvas.getContext('2d');
+      const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+      resize();
+      window.addEventListener('resize', resize);
+      
+      const bufferLen = analyserNode.frequencyBinCount;
+      const dataArr = new Uint8Array(bufferLen);
+      
+      function draw() {
+        requestAnimationFrame(draw);
+        if (!analyserNode) return;
+        analyserNode.getByteFrequencyData(dataArr);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const barWidth = (canvas.width / bufferLen) * 2;
+        let x = 0;
+        for (let i = 0; i < bufferLen; i++) {
+          const barHeight = (dataArr[i] / 255) * canvas.height * 0.8;
+          const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+          grad.addColorStop(0, 'rgba(0, 243, 255, 0.1)');
+          grad.addColorStop(0.5, 'rgba(176, 38, 255, 0.6)');
+          grad.addColorStop(1, 'rgba(255, 0, 85, 0.9)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
+          x += barWidth;
+        }
+      }
+      draw();
+    }
+
+    function setEqPreset(preset) {
+      const presets = { flat: [0,0,0,0,0], bass: [8,6,1,-2,-4], rock: [5,3,-1,3,6], pop: [-1,2,5,3,-2] };
+      const gains = presets[preset] || presets.flat;
+      gains.forEach((g, i) => {
+        const slider = document.querySelector(`.eq-band[data-band="${i}"]`);
+        if (slider) {
+          slider.value = g;
+          document.getElementById(`eq-val-${i}`).innerText = (g > 0 ? '+' : '') + g + 'dB';
+          if (eqFilters[i]) eqFilters[i].gain.value = g;
+        }
+      });
+      showToast(`PRESET EQ: ${preset.toUpperCase()}`);
+    }
+
+    async function handleBgUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(evt) {
+        const bgData = evt.target.result;
+        document.getElementById('cyber-bg').style.backgroundImage = `url('${bgData}')`;
+        await saveSettingToDB('custom_bg', bgData);
+        showToast('FONDO ACTUALIZADO');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function resetDefaultBg() {
+      document.getElementById('cyber-bg').style.backgroundImage = "url('https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=1600&q=80')";
+      await saveSettingToDB('custom_bg', null);
+      showToast('FONDO RESTAURADO');
+    }
+
+    function setSleepTimer(mins) {
+      cancelSleepTimer();
+      timerMinutesLeft = mins;
+      document.getElementById('sleep-timer-badge').classList.remove('hidden');
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timerMinutesLeft--;
+        if (timerMinutesLeft <= 0) {
+          cancelSleepTimer();
+          document.getElementById('audio-element').pause();
+          showToast('MÚSICA DETENIDA POR TEMPORIZADOR');
+        } else {
+          updateTimerDisplay();
+        }
+      }, 60000);
+      showToast(`TEMPORIZADOR: ${mins} MIN`);
+    }
+
+    function cancelSleepTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      document.getElementById('sleep-timer-badge').classList.add('hidden');
+    }
+
+    function updateTimerDisplay() {
+      document.getElementById('timer-countdown').innerText = `${timerMinutesLeft} MIN`;
+    }
+
+    function swipeToPage(pageIdx) {
+      currentPage = pageIdx;
+      document.getElementById('swipe-wrapper').style.transform = `translateX(-${pageIdx * 50}%)`;
+      const navDeck = document.getElementById('nav-btn-deck');
+      const navList = document.getElementById('nav-btn-list');
+      if (pageIdx === 0) {
+        navDeck.className = 'px-3 py-1.5 transition-all text-cyber-cyan bg-cyber-cyan/20 border border-cyber-cyan font-bold flex items-center gap-1.5';
+        navList.className = 'px-3 py-1.5 transition-all text-slate-400 hover:text-cyber-cyan flex items-center gap-1.5';
+        document.getElementById('dot-0').className = 'w-2.5 h-1 bg-cyber-cyan rounded-full';
+        document.getElementById('dot-1').className = 'w-2.5 h-1 bg-slate-700 rounded-full';
+      } else {
+        navList.className = 'px-3 py-1.5 transition-all text-cyber-cyan bg-cyber-cyan/20 border border-cyber-cyan font-bold flex items-center gap-1.5';
+        navDeck.className = 'px-3 py-1.5 transition-all text-slate-400 hover:text-cyber-cyan flex items-center gap-1.5';
+        document.getElementById('dot-1').className = 'w-2.5 h-1 bg-cyber-cyan rounded-full';
+        document.getElementById('dot-0').className = 'w-2.5 h-1 bg-slate-700 rounded-full';
+      }
+    }
+
+    function initSwipeSupport() {
+      const container = document.getElementById('swipe-wrapper');
+      let startX = 0;
+      container.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+      container.addEventListener('touchend', (e) => {
+        let dist = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dist) > 50) {
+          if (dist < 0 && currentPage === 0) swipeToPage(1);
+          else if (dist > 0 && currentPage === 1) swipeToPage(0);
+        }
+      }, { passive: true });
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    
+    function showToast(msg) {
+      const toast = document.getElementById('toast-msg');
+      document.getElementById('toast-text').innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
